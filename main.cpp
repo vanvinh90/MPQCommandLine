@@ -42,6 +42,8 @@ enum
     OPT_DEST,
     OPT_FULLPATH,
     OPT_LOWERCASE,
+    OPT_ADDFILE,
+    OPT_REMOVEFILE
 };
 
 
@@ -65,6 +67,8 @@ const CSimpleOpt::SOption COMMAND_LINE_OPTIONS[] = {
     { OPT_FULLPATH,         "--fullpath",       SO_NONE    },
     { OPT_LOWERCASE,        "-c",               SO_NONE    },
     { OPT_LOWERCASE,        "--lowercase",      SO_NONE    },
+    { OPT_ADDFILE,          "--add",            SO_REQ_SEP },
+    { OPT_REMOVEFILE,       "--rm",             SO_REQ_SEP },
     
     SO_END_OF_OPTIONS
 };
@@ -151,6 +155,8 @@ int main(int argc, char** argv)
     bool bExtraction = false;
     bool bUseFullPath = false;
     bool bLowerCase = false;
+    bool isAddFile = false;
+    bool isRemoveFile = false;
 
 
     // Parse the command-line parameters
@@ -211,6 +217,16 @@ int main(int argc, char** argv)
                 case OPT_LOWERCASE:
                     bLowerCase = true;
                     break;
+
+                case OPT_ADDFILE:
+                    strSearchPattern = args.OptionArg();
+                    isAddFile = true;
+                    break;
+
+                case OPT_REMOVEFILE:
+                    strSearchPattern = args.OptionArg();
+                    isRemoveFile = true;
+                    break;
             }
         }
         else
@@ -228,7 +244,7 @@ int main(int argc, char** argv)
 
     
     cout << "Opening '" << args.File(0) << "'..." << endl;
-    if (!SFileOpenArchive(args.File(0), 0, MPQ_OPEN_READ_ONLY, &hArchive))
+    if (!SFileOpenArchive(args.File(0), 0, STREAM_FLAG_WRITE_SHARE, &hArchive))
     {
         cerr << "Failed to open the file '" << args.File(0) << "'" << endl;
         return -1;
@@ -340,8 +356,9 @@ int main(int argc, char** argv)
         cout << "Extracting files..." << endl;
         cout << endl;
 
-        if (strDestination.at(strDestination.size() - 1) != '/')
-            strDestination += "/";
+        if (strDestination.at(strDestination.size() - 1) != '/'){
+            //strDestination += "/";
+        }
 
         vector<tSearchResult>::iterator iter, iterEnd;
         for (iter = searchResults.begin(), iterEnd = searchResults.end(); iter != iterEnd; ++iter)
@@ -389,11 +406,53 @@ int main(int argc, char** argv)
                     transform(iter->strFileName.begin(), iter->strFileName.end(), iter->strFileName.begin(), ::tolower);
                 }
 
-                strDestName += iter->strFileName;
+                //strDestName += iter->strFileName;
             }
 
             if (!SFileExtractFile(hArchive, iter->strFullPath.c_str(), strDestName.c_str(), 0))
                 cerr << "Failed to extract the file '" << iter->strFullPath << "' in " << strDestName << endl;
+        }
+    }
+
+    // Add File
+    if (isAddFile && !searchResults.empty())
+    {
+        cout << endl;
+        cout << "Add files..." << endl;
+        cout << endl;
+
+        vector<tSearchResult>::iterator iter, iterEnd;
+        for (iter = searchResults.begin(), iterEnd = searchResults.end(); iter != iterEnd; ++iter)
+        {
+            string strDestName = strDestination;
+
+            strDestName += iter->strFileName;
+
+            if (!SFileAddFileEx(hArchive, iter->strFullPath.c_str(), "scripts/war3map.j", MPQ_FILE_REPLACEEXISTING, 0, 0)){
+                cerr << "Failed to add the file '" << iter->strFullPath  << " " << GetLastError() << endl;
+            }
+
+        }
+    }
+
+    // Remove File
+    if (isRemoveFile && !searchResults.empty())
+    {
+        cout << endl;
+        cout << "Remove files..." << endl;
+        cout << endl;
+
+        vector<tSearchResult>::iterator iter, iterEnd;
+        for (iter = searchResults.begin(), iterEnd = searchResults.end(); iter != iterEnd; ++iter)
+        {
+            string strDestName = strDestination;
+
+            strDestName += iter->strFileName;
+
+            if (!SFileRemoveFile(hArchive, iter->strFullPath.c_str(), 0)){
+                cerr << "Failed to remove the file " << iter->strFullPath  << " " << GetLastError() << endl;
+            }
+
         }
     }
 
