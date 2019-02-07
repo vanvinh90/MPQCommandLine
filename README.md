@@ -1,4 +1,4 @@
-# MPQExtractor
+# MPQ Full Command Line
 
 A command-line tool to extract files from MPQ archives (used by Blizzard games).
 
