@@ -43,7 +43,8 @@ enum
     OPT_FULLPATH,
     OPT_LOWERCASE,
     OPT_ADDFILE,
-    OPT_REMOVEFILE
+    OPT_REMOVEFILE,
+    OPT_COMPACTARCHIVE
 };
 
 
@@ -69,6 +70,7 @@ const CSimpleOpt::SOption COMMAND_LINE_OPTIONS[] = {
     { OPT_LOWERCASE,        "--lowercase",      SO_NONE    },
     { OPT_ADDFILE,          "--add",            SO_REQ_SEP },
     { OPT_REMOVEFILE,       "--rm",             SO_REQ_SEP },
+    { OPT_COMPACTARCHIVE,   "--ca",             SO_NONE },
     
     SO_END_OF_OPTIONS
 };
@@ -157,6 +159,7 @@ int main(int argc, char** argv)
     bool bLowerCase = false;
     bool isAddFile = false;
     bool isRemoveFile = false;
+    bool isCompactArchive = false;
 
 
     // Parse the command-line parameters
@@ -226,6 +229,11 @@ int main(int argc, char** argv)
                 case OPT_REMOVEFILE:
                     strSearchPattern = args.OptionArg();
                     isRemoveFile = true;
+                    break;
+
+                case OPT_COMPACTARCHIVE:
+                    //strSearchPattern = args.OptionArg();
+                    isCompactArchive = true;
                     break;
             }
         }
@@ -426,9 +434,7 @@ int main(int argc, char** argv)
         {
             string strDestName = strDestination;
 
-            strDestName += iter->strFileName;
-
-            if (!SFileAddFileEx(hArchive, iter->strFullPath.c_str(), "scripts/war3map.j", MPQ_FILE_REPLACEEXISTING, 0, 0)){
+            if (!SFileAddFileEx(hArchive, iter->strFullPath.c_str(), strDestName.c_str(), MPQ_FILE_REPLACEEXISTING, 0, 0)){
                 cerr << "Failed to add the file '" << iter->strFullPath  << " " << GetLastError() << endl;
             }
 
@@ -453,6 +459,12 @@ int main(int argc, char** argv)
                 cerr << "Failed to remove the file " << iter->strFullPath  << " " << GetLastError() << endl;
             }
 
+        }
+    }
+
+    if(isCompactArchive) {
+        if(!SFileCompactArchive(hArchive, NULL, 0)){
+            cerr << "Failed to compact archive " << GetLastError() << endl;
         }
     }
 
