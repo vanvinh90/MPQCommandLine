@@ -44,7 +44,8 @@ enum
     OPT_LOWERCASE,
     OPT_ADDFILE,
     OPT_REMOVEFILE,
-    OPT_COMPACTARCHIVE
+    OPT_COMPACTARCHIVE,
+    OPT_EXTRACT_SCRIPT_FILE
 };
 
 
@@ -70,7 +71,9 @@ const CSimpleOpt::SOption COMMAND_LINE_OPTIONS[] = {
     { OPT_LOWERCASE,        "--lowercase",      SO_NONE    },
     { OPT_ADDFILE,          "--add",            SO_REQ_SEP },
     { OPT_REMOVEFILE,       "--rm",             SO_REQ_SEP },
+    { OPT_COMPACTARCHIVE,   "-ca",             SO_NONE },
     { OPT_COMPACTARCHIVE,   "--ca",             SO_NONE },
+    { OPT_EXTRACT_SCRIPT_FILE,   "-esf",             SO_NONE },
     
     SO_END_OF_OPTIONS
 };
@@ -160,6 +163,7 @@ int main(int argc, char** argv)
     bool isAddFile = false;
     bool isRemoveFile = false;
     bool isCompactArchive = false;
+    bool isExtractScriptFile = false;
 
 
     // Parse the command-line parameters
@@ -232,8 +236,11 @@ int main(int argc, char** argv)
                     break;
 
                 case OPT_COMPACTARCHIVE:
-                    //strSearchPattern = args.OptionArg();
                     isCompactArchive = true;
+                    break;
+
+                case OPT_EXTRACT_SCRIPT_FILE:
+                    isExtractScriptFile = true;
                     break;
             }
         }
@@ -252,11 +259,21 @@ int main(int argc, char** argv)
 
     
     cout << "Opening '" << args.File(0) << "'..." << endl;
-    if (!SFileOpenArchive(args.File(0), 0, STREAM_FLAG_WRITE_SHARE, &hArchive))
-    {
-        cerr << "Failed to open the file '" << args.File(0) << "'" << endl;
-        return -1;
+    if(isAddFile || isRemoveFile || isCompactArchive) {
+        if (!SFileOpenArchive(args.File(0), 0, STREAM_FLAG_WRITE_SHARE, &hArchive))
+        {
+            cerr << "Failed to open the file '" << args.File(0) << "'" << endl;
+            return -1;
+        }
     }
+    else {
+        if (!SFileOpenArchive(args.File(0), 0, MPQ_OPEN_READ_ONLY, &hArchive))
+        {
+            cerr << "Failed to open the file '" << args.File(0) << "'" << endl;
+            return -1;
+        }
+    }
+    
 
     if (!strApplyListFile.empty())
     {
@@ -422,6 +439,30 @@ int main(int argc, char** argv)
         }
     }
 
+    // Extraction
+    if (isExtractScriptFile)
+    {
+        cout << endl;
+        cout << "Extracting script files..." << endl;
+        cout << endl;
+
+        string strDestName = strDestination;
+
+        if(SFileHasFile(hArchive, "scripts\\war3map.j")) {
+            strDestName += "_scripts_war3map.j";
+            if (!SFileExtractFile(hArchive, "scripts\\war3map.j", strDestName.c_str(), 0)){
+                cerr << "Failed to extract the file " << endl;
+            }
+        }
+
+        if(SFileHasFile(hArchive, "war3map.j")) {
+            strDestName += "_war3map.j";
+            if (!SFileExtractFile(hArchive, "war3map.j", strDestName.c_str(), 0)){
+                cerr << "Failed to extract the file " << endl;
+            }
+        }
+    }
+
     // Add File
     if (isAddFile && !searchResults.empty())
     {
@@ -463,7 +504,7 @@ int main(int argc, char** argv)
     }
 
     if(isCompactArchive) {
-        if(!SFileCompactArchive(hArchive, NULL, 0)){
+        if(!SFileCompactArchive(hArchive, 0, 0)){
             cerr << "Failed to compact archive " << GetLastError() << endl;
         }
     }
